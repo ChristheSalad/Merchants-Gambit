@@ -7,8 +7,58 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Merchant's Gambit</h1>
-    <p>Placeholder text for game</p>
+    <div id="main-menu">
+        <h1>Merchant's Gambit</h1>
+        <button id="start-game">Start Game</button>
+        <button id="settings">Settings</button>
+        <button id="help">Help</button>
+        <button id="about">About</button>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <div id="game-info" class="hidden">
+            <h2 id="turn-display">Player 1's Turn</h2>
+            <button id="build-road">Build Road</button>
+            <button id="move-convoy">Move Convoy</button>
+            <button id="attack">Attack</button>
+        </div>
+        <div id="game-board">
+            <!-- Game board will be generated here -->
+        </div>
+    </div>
+
+    <div id="settings-page" class="hidden">
+        <h2>Settings</h2>
+        <p>Settings will be available in a future version.</p>
+        <button class="back-to-menu">Back</button>
+    </div>
+
+    <div id="help-page" class="hidden">
+        <h2>How to Play</h2>
+        <p>
+            Each player rolls a die and the highest number goes first and places their castle piece first.
+            Both players start with a castle piece that are placed on opposite sides of the board. They can be placed anywhere along their respective row.
+            Each player will take turns either building a road, traveling down a single road piece connected to their castle, or attacking an enemy road (edge).
+            You can only build a road within a 1 block distance from your current player piece.
+            You can only attack a road within a 1 block distance from the opponents current player piece.
+            For every attack action, there is a 3 turn cooldown
+            building or traversing is available on every turn
+            Attacking a road edge will render it unusable for the remainder of the game.
+            there must exist SOME path from castle to castle, if attacking a road makes it so that there is NO path then that attack is not valid.
+            attacks are on the specific edges of a tile instead of the entire tile itself. For example, there are 4 edges on any given tile, if you attack one side, there are still 3 other edges that the enemy can traverse from.
+            Roads built by the enemy can be traversed if it connects to your road
+            In the instance that both players are on the same road, they will commence in a battle
+            The player who initiated the battle (the one who moved onto the road) will gain a +1 to their dice roll. Then both players will roll a die, whoever rolls the highest numbers wins and they will gain an additional move (build, move, or attack) at no cost of a turn.
+        </p>
+        <button class="back-to-menu">Back</button>
+    </div>
+
+    <div id="about-page" class="hidden">
+        <h2>About</h2>
+        <p>Merchant's Gambit is a 2-player turn-based strategy game.</p>
+        <button class="back-to-menu">Back</button>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
