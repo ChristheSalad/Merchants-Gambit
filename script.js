@@ -56,6 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 let movingConvoy = false;
 
+                let attacking = false;
+
             
 
                 const board = Array(10).fill(null).map(() => Array(10).fill(null));
@@ -78,6 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     movingConvoy = false;
 
+                    attacking = false;
+
                 });
 
             
@@ -88,15 +92,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     buildingRoad = false;
 
+                    attacking = false;
+
                 });
 
             
 
                 attackBtn.addEventListener('click', () => {
 
-                    console.log('Attack');
+                    attacking = true;
 
-                    switchTurn();
+                    buildingRoad = false;
+
+                    movingConvoy = false;
 
                 });
 
@@ -108,260 +116,139 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     turnDisplay.textContent = `Player ${currentPlayer}'s Turn`;
 
+                    moveConvoyBtn.disabled = false;
+
+                    buildRoadBtn.disabled = false;
+
                 }
 
             
 
-                                function generateBoard() {
-
+                function onMouseOver(row) {
+                    if ((row === 0 && !player2Castle) || (row === 9 && !player1Castle)) {
+                        highlightRow(row);
+                    }
+                }
             
-
-                                    for (let i = 0; i < 100; i++) {
-
-            
-
-                                        const cell = document.createElement('div');
-
-            
-
-                                        cell.classList.add('grid-cell');
-
-            
-
-                                        const row = Math.floor(i / 10);
-
-            
-
-                                        const col = i % 10;
-
-            
-
-                                        cell.dataset.row = row;
-
-            
-
-                                        cell.dataset.col = col;
-
-            
-
-                                        gameBoard.appendChild(cell);
-
-            
-
-                
-
-            
-
-                                        cell.addEventListener('click', () => {
-
-            
-
-                                            if (buildingRoad) {
-
-            
-
-                                                buildRoad(cell, row, col);
-
-            
-
-                                            } else if (movingConvoy) {
-
-            
-
-                                                moveConvoy(cell, row, col);
-
-            
-
-                                            }
-
-            
-
-                                        });
-
-            
-
-                
-
-            
-
-                                        if (row === 0) {
-
-            
-
-                                            cell.classList.add('player2-row');
-
-            
-
-                                            cell.addEventListener('mouseover', () => {
-
-            
-
-                                                if (!player2Castle) {
-
-            
-
-                                                    highlightRow(row);
-
-            
-
-                                                }
-
-            
-
-                                            });
-
-            
-
-                                            cell.addEventListener('mouseout', () => {
-
-            
-
-                                                unhighlightRow(row);
-
-            
-
-                                            });
-
-            
-
-                                            cell.addEventListener('click', () => {
-
-            
-
-                                                placeCastle(cell);
-
-            
-
-                                            });
-
-            
-
-                                        } else if (row === 9) {
-
-            
-
-                                            cell.classList.add('player1-row');
-
-            
-
-                                            cell.addEventListener('mouseover', () => {
-
-            
-
-                                                if (!player1Castle) {
-
-            
-
-                                                    highlightRow(row);
-
-            
-
-                                                }
-
-            
-
-                                            });
-
-            
-
-                                            cell.addEventListener('mouseout', () => {
-
-            
-
-                                                unhighlightRow(row);
-
-            
-
-                                            });
-
-            
-
-                                            cell.addEventListener('click', () => {
-
-            
-
-                                                placeCastle(cell);
-
-            
-
-                                            });
-
-            
-
-                                        }
-
-            
-
-                                    }
-
-            
-
-                                }
+                function onMouseOut(row) {
+                    unhighlightRow(row);
+                }
+
+                const cellListeners = new Map();
+
+                function generateBoard() {
+                    for (let i = 0; i < 100; i++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('grid-cell');
+                        const row = Math.floor(i / 10);
+                        const col = i % 10;
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        gameBoard.appendChild(cell);
+
+                        cell.addEventListener('click', () => {
+                            if (buildingRoad) {
+                                buildRoad(cell, row, col);
+                            } else if (movingConvoy) {
+                                moveConvoy(cell, row, col);
+                            } else if (attacking) {
+                                attackRoad(cell, row, col);
+                            }
+                        });
+
+                        if (row === 0 || row === 9) {
+                            const mouseOverListener = () => onMouseOver(row);
+                            const mouseOutListener = () => onMouseOut(row);
+                            cellListeners.set(cell, { mouseOverListener, mouseOutListener });
+                            cell.addEventListener('mouseover', mouseOverListener);
+                            cell.addEventListener('mouseout', mouseOutListener);
+
+                            if (row === 0) {
+                                cell.classList.add('player2-row');
+                            } else {
+                                cell.classList.add('player1-row');
+                            }
+                            cell.addEventListener('click', () => {
+                                placeCastle(cell);
+                            });
+                        }
+                    }
+                }
 
             
 
                 function buildRoad(cell, row, col) {
+                    const convoy = currentPlayer === 1 ? player1Convoy : player2Convoy;
+                    const convoyRow = parseInt(convoy.dataset.row);
+                    const convoyCol = parseInt(convoy.dataset.col);
 
-                    if (board[row][col] === null) {
+                    const isAdjacent = (Math.abs(row - convoyRow) === 1 && col === convoyCol) || (Math.abs(col - convoyCol) === 1 && row === convoyRow);
 
+                    if (board[row][col] === null && isAdjacent) {
                         board[row][col] = currentPlayer;
-
                         cell.style.border = '2px solid blue';
-
                         buildingRoad = false;
-
                         switchTurn();
-
                     }
+                }
 
+                function attackRoad(cell, row, col) {
+                    const convoy = currentPlayer === 1 ? player1Convoy : player2Convoy;
+                    const convoyRow = parseInt(convoy.dataset.row);
+                    const convoyCol = parseInt(convoy.dataset.col);
+
+                    const isAdjacent = (Math.abs(row - convoyRow) === 1 && col === convoyCol) || (Math.abs(col - convoyCol) === 1 && row === convoyRow);
+
+                    if (board[row][col] !== null && board[row][col] !== -1 && isAdjacent) {
+                        board[row][col] = -1;
+                        cell.style.border = '2px solid red';
+                        attacking = false;
+                        moveConvoyBtn.disabled = true;
+                        buildRoadBtn.disabled = true;
+                        switchTurn();
+                    }
                 }
 
             
 
                 function moveConvoy(cell, row, col) {
+                    const convoy = currentPlayer === 1 ? player1Convoy : player2Convoy;
+                    const convoyRow = parseInt(convoy.dataset.row);
+                    const convoyCol = parseInt(convoy.dataset.col);
 
-                    if (board[row][col] !== null) {
+                    const isAdjacent = (Math.abs(row - convoyRow) === 1 && col === convoyCol) || (Math.abs(col - convoyCol) === 1 && row === convoyRow);
 
-                        const convoy = currentPlayer === 1 ? player1Convoy : player2Convoy;
-
+                    if (board[row][col] !== null && isAdjacent) {
                         const convoyChar = currentPlayer === 1 ? '&#9817;' : '&#9823;';
-
                         const castleChar = currentPlayer === 1 ? '&#9814;' : '&#9820;';
 
-            
-
                         if (convoy.innerHTML.includes(castleChar)) {
-
-                            convoy.innerHTML = castleChar;
-
+                            convoy.innerHTML = convoy.innerHTML.replace(convoyChar, '');
                         } else {
-
                             convoy.innerHTML = '';
-
                         }
-
                         
-
-                        cell.innerHTML = convoyChar;
-
+                        cell.innerHTML += convoyChar;
                         if (currentPlayer === 1) {
-
                             player1Convoy = cell;
-
                         }
-
                         else {
-
                             player2Convoy = cell;
-
                         }
-
                         movingConvoy = false;
 
-                        switchTurn();
-
+                        const opponentCastle = currentPlayer === 1 ? player2Castle : player1Castle;
+                        if (cell === opponentCastle) {
+                            setTimeout(() => {
+                                alert(`Player ${currentPlayer} wins!`);
+                                mainMenu.classList.remove('hidden');
+                                gameContainer.classList.add('hidden');
+                                location.reload();
+                            }, 100);
+                        } else {
+                            switchTurn();
+                        }
                     }
-
                 }
 
     
@@ -383,20 +270,40 @@ document.addEventListener('DOMContentLoaded', () => {
     function placeCastle(cell) {
         if (buildingRoad) return;
         const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
         if (row === 9 && !player1Castle) {
-            cell.innerHTML = '&#9820;'; // Black castle
+            cell.innerHTML = '&#9814;'; // White castle
             player1Castle = cell;
             player1Convoy = cell;
-            cell.innerHTML += '&#9823;'; // Black pawn
+            cell.innerHTML += '&#9817;'; // White pawn
+            board[row][col] = 1;
+            cell.classList.add('player1-castle');
+            removeRowHighlights(9);
         } else if (row === 0 && !player2Castle) {
-            cell.innerHTML = '&#9814;'; // White castle
+            cell.innerHTML = '&#9820;'; // Black castle
             player2Castle = cell;
             player2Convoy = cell;
-            cell.innerHTML += '&#9817;'; // White pawn
+            cell.innerHTML += '&#9823;'; // Black pawn
+            board[row][col] = 2;
+            cell.classList.add('player2-castle');
+            removeRowHighlights(0);
         }
 
         if (player1Castle && player2Castle) {
             document.getElementById('game-info').classList.remove('hidden');
         }
+    }
+
+    function removeRowHighlights(row) {
+        const cells = document.querySelectorAll(`.grid-cell[data-row="${row}"]`);
+        cells.forEach(cell => {
+            cell.classList.remove('player1-row', 'player2-row', 'row-highlight');
+            const listeners = cellListeners.get(cell);
+            if (listeners) {
+                cell.removeEventListener('mouseover', listeners.mouseOverListener);
+                cell.removeEventListener('mouseout', listeners.mouseOutListener);
+                cellListeners.delete(cell);
+            }
+        });
     }
 });

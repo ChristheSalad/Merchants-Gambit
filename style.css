@@ -70,3 +70,11 @@ button {
 .player2-row.row-highlight {
     background-color: #ff99aa; /* Lighter red */
 }
+
+.player1-castle {
+    text-shadow: 0 0 10px #add8e6, 0 0 20px #add8e6, 0 0 30px #add8e6;
+}
+
+.player2-castle {
+    text-shadow: 0 0 10px #ffb6c1, 0 0 20px #ffb6c1, 0 0 30px #ffb6c1;
+}
