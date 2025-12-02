@@ -78,3 +78,36 @@ button {
 .player2-castle {
     text-shadow: 0 0 10px #ffb6c1, 0 0 20px #ffb6c1, 0 0 30px #ffb6c1;
 }
+
+.road-preview {
+    background-color: rgba(0, 0, 255, 0.4); /* semi-transparent blue */
+    border: none;
+}
+.attack-preview {
+    background-color: rgba(255, 0, 0, 0.4); /* semi-transparent red */
+    border: none;
+}
+
+.action-btn {
+    padding: 10px 20px;
+    margin: 5px;
+    border: 2px solid #333;
+    background-color: #8b4513;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+/* Hover state */
+.action-btn:hover {
+    background-color: #a0522d;
+    border-color: #666;
+}
+
+/* Selected/active state */
+.action-btn.selected {
+    background-color: #0fd752; /* light blue */
+    border-color: #000000;
+    color: #000;
+}
+
+
