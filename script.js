@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const helpBtn = document.getElementById('help');
     const aboutBtn = document.getElementById('about');
     const backBtns = document.querySelectorAll('.back-to-menu');
+    
 
     startGameBtn.addEventListener('click', () => {
         mainMenu.classList.add('hidden');
@@ -72,8 +73,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const attackBtn = document.getElementById('attack');
 
+                const actionButtons = [buildRoadBtn, moveConvoyBtn, attackBtn];
+
                 let turnNumber = 1;
                 let lastAttackTurn = { 1: 0, 2: 0 };
+
+                function updateActionSelection() {
+                    buildRoadBtn.classList.toggle('selected', buildingRoad);
+                    moveConvoyBtn.classList.toggle('selected', movingConvoy);
+                    attackBtn.classList.toggle('selected', attacking);
+                }
             
 
                 buildRoadBtn.addEventListener('click', () => {
@@ -83,6 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     movingConvoy = false;
 
                     attacking = false;
+
+                    updateActionSelection();
 
                 });
 
@@ -96,6 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     attacking = false;
 
+                    updateActionSelection();
+
                 });
 
             
@@ -108,6 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     movingConvoy = false;
 
+                    updateActionSelection();
+
                 });
 
             
@@ -117,11 +132,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentPlayer = currentPlayer === 1 ? 2 : 1;
                     turnNumber += 1;
 
+                    buildingRoad= false;
+                    movingConvoy = false;
+                    attacking = false;
+                    updateActionSelection();
+
                     turnDisplay.textContent = `Player ${currentPlayer}'s Turn`;
 
                     moveConvoyBtn.disabled = false;
-
                     buildRoadBtn.disabled = false;
+                    attackBtn.disabled = false;
 
                 }
 
@@ -158,6 +178,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                 attackRoad(cell, row, col);
                             }
                         });
+                        
+                        cell.addEventListener('mouseover', () => {
+                            if (buildingRoad && canBuildHere(row, col)) {
+                                cell.classList.add('road-preview');
+                            }
+                        });
+
+                        cell.addEventListener('mouseout', () => {
+                        cell.classList.remove('road-preview');
+                        });
+
 
                         if (row === 0 || row === 9) {
                             const mouseOverListener = () => onMouseOver(row);
@@ -193,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     for (let r = 0; r < 10; r++) {
                         for (let c = 0; c < 10; c++) {
-                            if (board[r][c] === currentPlayer) {
+                            if (board[r][c] === 1 || board[r][c] === 2) {
                                 if (isAdjacent(r, c, row, col)) {
                                     canBuild = true;
                                     break;
@@ -204,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     if (canBuild) {
                         board[row][col] = currentPlayer;
-                        cell.style.border = '2px solid blue'; // Road color
+                        cell.style.backgroundColor = 'blue';
                         buildingRoad = false;
                         switchTurn();
                     }
@@ -220,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (board[row][col] === null || board[row][col] === -1) return;
 
                     board[row][col] = -1;
-                    cell.style.border = '2px solid red';
+                    cell.style.backgroundColor = 'red';
                     attacking = false;
 
                     lastAttackTurn[currentPlayer] = turnNumber;
@@ -344,3 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+
+// change it so that you cannot attack roads that a player is currently on
