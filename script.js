@@ -248,9 +248,42 @@ document.addEventListener('DOMContentLoaded', () => {
                         alert(`You must wait ${5 - (turnNumber - lastAttackTurn[currentPlayer])} more turns to attack.`);
                         return;
                     }
+                
+                    // Cannot attack a tile with a convoy on it
+                    if (
+                        player1Convoy?.parentElement === cell ||
+                        player2Convoy?.parentElement === cell
+                    ) {
+                        return;
+                    }
+
                     if (board[row][col] === null || board[row][col] === -1) return;
 
+                    // Temporarily destroy the tile
+                    const oldValue = board[row][col];
                     board[row][col] = -1;
+
+                    // Get convoy + enemy castle
+                    const convoy = currentPlayer === 1 ? player1Convoy : player2Convoy;
+                    const enemyCastle = currentPlayer === 1 ? player2Castle : player1Castle;
+
+                    const convoyRow = parseInt(convoy.parentElement.dataset.row);
+                    const convoyCol = parseInt(convoy.parentElement.dataset.col);
+
+                    const castleRow = parseInt(enemyCastle.dataset.row);
+                    const castleCol = parseInt(enemyCastle.dataset.col);
+
+                    // Check if a path still exists between convoy and castle
+                    const connected = pathExists(board, convoyRow, convoyCol, castleRow, castleCol);
+
+                    if (!connected) {
+                        // Undo the attack
+                        board[row][col] = oldValue;
+                        alert("That attack would block all possible paths. Attack denied.");
+                        return;
+                    }
+
+                    // Attack is valid → commit it visually
                     cell.style.backgroundColor = 'red';
                     attacking = false;
 
@@ -259,8 +292,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     moveConvoyBtn.disabled = true;
                     buildRoadBtn.disabled = true;
                     switchTurn();
-                               
                 }
+
 
 
             
@@ -300,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             switchTurn();
                         }
                     }
-            }
+                }
 
 
 
@@ -374,7 +407,52 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    function pathExists(board, startRow, startCol, goalRow, goalCol) {
+    const rows = board.length;
+    const cols = board[0].length;
+
+    const directions = [
+        [1, 0], [-1, 0],
+        [0, 1], [0, -1]
+    ];
+
+    const visited = new Set();
+    const queue = [[startRow, startCol]];
+
+    while (queue.length > 0) {
+        const [r, c] = queue.shift();
+        const key = `${r},${c}`;
+
+        if (visited.has(key)) continue;
+        visited.add(key);
+
+        // Goal reached
+        if (r === goalRow && c === goalCol) return true;
+
+        for (const [dr, dc] of directions) {
+            const nr = r + dr;
+            const nc = c + dc;
+
+            // valid tile
+            if (
+                nr >= 0 && nr < rows &&
+                nc >= 0 && nc < cols &&
+                board[nr][nc] !== -1 &&      // 🚨 ONLY BLOCK ATTACKED TILES
+                !visited.has(`${nr},${nc}`)
+            ) {
+                queue.push([nr, nc]);
+            }
+        }
+    }
+
+    return false;
+}
+
+
+
 });
 
 
 // change it so that you cannot attack roads that a player is currently on
+// BFS to check if convoy can reach castle before allowing attack 
