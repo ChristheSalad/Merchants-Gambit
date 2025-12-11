@@ -6,17 +6,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const helpPage = document.getElementById('help-page');
     const aboutPage = document.getElementById('about-page');
 
-    const startGameBtn = document.getElementById('start-game');
+    const aiDifficultyMenu = document.getElementById('ai-difficulty-menu');
+    const playerVsPlayerBtn = document.getElementById('player-vs-player');
+    const playerVsAiBtn = document.getElementById('player-vs-ai');
+    const easyDifficultyBtn = document.getElementById('easy-difficulty');
+    const mediumDifficultyBtn = document.getElementById('medium-difficulty');
+
     const settingsBtn = document.getElementById('settings');
     const helpBtn = document.getElementById('help');
     const aboutBtn = document.getElementById('about');
     const backBtns = document.querySelectorAll('.back-to-menu');
+
+    let gameMode = null; // 'pvp' or 'pve'
+    let difficulty = null; // 'easy' or 'medium'
     
 
-    startGameBtn.addEventListener('click', () => {
+    playerVsPlayerBtn.addEventListener('click', () => {
+        gameMode = 'pvp';
         mainMenu.classList.add('hidden');
         gameContainer.classList.remove('hidden');
         generateBoard();
+    });
+
+    playerVsAiBtn.addEventListener('click', () => {
+        mainMenu.classList.add('hidden');
+        aiDifficultyMenu.classList.remove('hidden');
+    });
+
+    easyDifficultyBtn.addEventListener('click', () => {
+        gameMode = 'pve';
+        difficulty = 'easy';
+        aiDifficultyMenu.classList.add('hidden');
+        gameContainer.classList.remove('hidden');
+        generateBoard();
+    });
+
+    mediumDifficultyBtn.addEventListener('click', () => {
+        // To be implemented
+        alert('Medium difficulty is coming soon!');
     });
 
     settingsBtn.addEventListener('click', () => {
@@ -40,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
             settingsPage.classList.add('hidden');
             helpPage.classList.add('hidden');
             aboutPage.classList.add('hidden');
+            aiDifficultyMenu.classList.add('hidden');
         });
     });
 
@@ -137,7 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     attacking = false;
                     updateActionSelection();
 
-                    turnDisplay.textContent = `Player ${currentPlayer}'s Turn`;
+                    if (gameMode === 'pve' && currentPlayer === 2) {
+                        turnDisplay.textContent = "AI's Turn";
+                        setTimeout(aiTurn, 1000); // Give a slight delay for realism
+                    } else {
+                        turnDisplay.textContent = `Player ${currentPlayer}'s Turn`;
+                    }
 
                     moveConvoyBtn.disabled = false;
                     buildRoadBtn.disabled = false;
@@ -180,8 +213,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         
                         cell.addEventListener('mouseover', () => {
-                            if (buildingRoad && canBuildHere(row, col)) {
-                                cell.classList.add('road-preview');
+                            if (buildingRoad) {
+                                const canBuildHere = () => {
+                                    if (board[row][col] !== null) return false;
+                                    const playerNetwork = [];
+                                    for(let r=0; r<10; r++) {
+                                        for(let c=0; c<10; c++) {
+                                            if(board[r][c] === currentPlayer) {
+                                                playerNetwork.push({r,c});
+                                            }
+                                        }
+                                    }
+                                    for (const piece of playerNetwork) {
+                                        if ((Math.abs(piece.r - row) === 1 && piece.c === col) || (Math.abs(piece.c - col) === 1 && piece.r === row)) {
+                                            return true;
+                                        }
+                                    }
+                                    return false;
+                                };
+                                if (canBuildHere()) {
+                                    cell.classList.add('road-preview');
+                                }
                             }
                         });
 
@@ -212,6 +264,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
 
                 function buildRoad(cell, row, col) {
+                    if (cell === null) {
+                        cell = document.querySelector(`.grid-cell[data-row="${row}"][data-col="${col}"]`);
+                    }
 
                    if (board[row][col] !== null) return;
                    if (board[row][col] === -1) return;
@@ -221,21 +276,25 @@ document.addEventListener('DOMContentLoaded', () => {
                                (Math.abs(c1 - c2) === 1 && r1 === r2);
                     }
                     let canBuild = false;
-
-                    for (let r = 0; r < 10; r++) {
-                        for (let c = 0; c < 10; c++) {
-                            if (board[r][c] === 1 || board[r][c] === 2) {
-                                if (isAdjacent(r, c, row, col)) {
-                                    canBuild = true;
-                                    break;
-                                }
+                    const playerNetwork = [];
+                    for(let r=0; r<10; r++) {
+                        for(let c=0; c<10; c++) {
+                            if(board[r][c] === currentPlayer) {
+                                playerNetwork.push({r,c});
                             }
                         }
-                        if (canBuild) break;
                     }
+
+                    for(const piece of playerNetwork) {
+                        if(isAdjacent(piece.r, piece.c, row, col)) {
+                            canBuild = true;
+                            break;
+                        }
+                    }
+
                     if (canBuild) {
                         board[row][col] = currentPlayer;
-                        cell.style.backgroundColor = 'blue';
+                        cell.style.backgroundColor = currentPlayer === 1 ? 'blue' : 'pink';
                         buildingRoad = false;
                         switchTurn();
                     }
@@ -243,77 +302,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    function attackRoad(cell, row, col) {
-    // cooldown
-    if (turnNumber - lastAttackTurn[currentPlayer] < 5) {
-        alert(`You must wait ${5 - (turnNumber - lastAttackTurn[currentPlayer])} more turns to attack.`);
-        return;
-    }
+                function attackRoad(cell, row, col) {
+                    if (turnNumber - lastAttackTurn[currentPlayer] < 5) {
+                        alert(`You must wait ${5 - (turnNumber - lastAttackTurn[currentPlayer])} more turns to attack.`);
+                        return;
+                    }
+                    if (board[row][col] === null || board[row][col] === -1) return;
 
-    // cannot attack a tile where a convoy stands
-    if (player1Convoy?.parentElement === cell || player2Convoy?.parentElement === cell) {
-        return;
-    }
+                    board[row][col] = -1;
+                    cell.style.backgroundColor = 'red';
+                    attacking = false;
 
-    // cannot attack castles
-    if (cell === player1Castle || cell === player2Castle) return;
+                    lastAttackTurn[currentPlayer] = turnNumber;
 
-    // can't attack already destroyed / empty?
-    // If you want to allow attacking non-road tiles remove the null check; current logic blocks empty/null.
-    if (board[row][col] === null || board[row][col] === -1) return;
-
-    // backup and simulate
-    const oldValue = board[row][col];
-    board[row][col] = -1; // simulate attack
-
-    // get coordinates for both convoys and both castles
-    if (!player1Convoy || !player2Convoy || !player1Castle || !player2Castle) {
-        // something missing — revert and block
-        board[row][col] = oldValue;
-        return;
-    }
-
-    const p1StartR = parseInt(player1Convoy.parentElement.dataset.row, 10);
-    const p1StartC = parseInt(player1Convoy.parentElement.dataset.col, 10);
-    const p2StartR = parseInt(player2Convoy.parentElement.dataset.row, 10);
-    const p2StartC = parseInt(player2Convoy.parentElement.dataset.col, 10);
-
-    const p1CastleR = parseInt(player1Castle.dataset.row, 10);
-    const p1CastleC = parseInt(player1Castle.dataset.col, 10);
-    const p2CastleR = parseInt(player2Castle.dataset.row, 10);
-    const p2CastleC = parseInt(player2Castle.dataset.col, 10);
-
-    // check connectivity for BOTH players: each convoy -> *opponent's* castle
-    // Player1 must reach player2Castle; Player2 must reach player1Castle
-    const p1CanReach = bfsPathExists(board, p1StartR, p1StartC, p2CastleR, p2CastleC);
-    const p2CanReach = bfsPathExists(board, p2StartR, p2StartC, p1CastleR, p1CastleC);
-
-    if (!p1CanReach || !p2CanReach) {
-        // revert simulation and deny
-        board[row][col] = oldValue;
-        alert("That attack would block all possible paths for at least one player. Attack denied.");
-        return;
-    }
-
-    // attack allowed — commit
-    cell.style.backgroundColor = 'red';
-    // board[row][col] already set to -1 (keeps logical state)
-    attacking = false;
-    lastAttackTurn[currentPlayer] = turnNumber;
-
-    moveConvoyBtn.disabled = true;
-    buildRoadBtn.disabled = true;
-
-    switchTurn();
-}
-
-
-
+                    moveConvoyBtn.disabled = true;
+                    buildRoadBtn.disabled = true;
+                    switchTurn();
+                               
+                }
 
 
             
 
                 function moveConvoy(cell, row, col) {
+                    if (cell === null) {
+                        cell = document.querySelector(`.grid-cell[data-row="${row}"][data-col="${col}"]`);
+                    }
                     const pawn = currentPlayer === 1 ? player1Convoy : player2Convoy;
                     if (board[row][col] === null || board[row][col] === -1) return;
                     const convoyCell = pawn.parentElement;
@@ -348,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             switchTurn();
                         }
                     }
-                }
+            }
 
 
 
@@ -391,7 +405,11 @@ document.addEventListener('DOMContentLoaded', () => {
         board[row][parseInt(cell.dataset.col)] = 1;
         cell.classList.add('player1-castle');
         removeRowHighlights(9);
-    } else if (row === 0 && !player2Castle) {
+
+        if (gameMode === 'pve') {
+            aiPlaceCastle();
+        }
+    } else if (row === 0 && !player2Castle && gameMode === 'pvp') {
         castle.innerHTML = '&#9820;'; // Black castle
         cell.appendChild(castle);
         pawn.innerHTML = '&#9823;'; // Black pawn
@@ -423,48 +441,169 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function aiPlaceCastle() {
+        const row = 0;
+        const col = Math.floor(Math.random() * 10);
+        const cell = document.querySelector(`.grid-cell[data-row="${row}"][data-col="${col}"]`);
+        const castle = document.createElement('span');
+        castle.classList.add('castle');
+        const pawn = document.createElement('span');
+        pawn.classList.add('pawn');
 
-    function bfsPathExists(board, startRow, startCol, goalRow, goalCol) {
-    const rows = board.length;
-    const cols = board[0].length;
+        castle.innerHTML = '&#9820;'; // Black castle
+        cell.appendChild(castle);
+        pawn.innerHTML = '&#9823;'; // Black pawn
+        cell.appendChild(pawn);
 
-    // sanity checks
-    if (startRow < 0 || startRow >= rows || startCol < 0 || startCol >= cols) return false;
-    if (goalRow  < 0 || goalRow  >= rows || goalCol  < 0 || goalCol  >= cols) return false;
+        player2Castle = cell;
+        player2Convoy = pawn;
+        board[row][col] = 2;
+        cell.classList.add('player2-castle');
+        removeRowHighlights(0);
 
-    // if start or goal are attacked, no path
-    if (board[startRow][startCol] === -1) return false;
-    if (board[goalRow][goalCol] === -1) return false;
+        if (player1Castle && player2Castle) {
+            document.getElementById('game-info').classList.remove('hidden');
+        }
+    }
 
-    const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
-    const queue = [[startRow, startCol]];
-    visited[startRow][startCol] = true;
+    function aiTurn() {
+        // Easy AI logic
+        const opponentCastleCell = player1Castle;
+        const opponentCastleRow = parseInt(opponentCastleCell.dataset.row);
+        const opponentCastleCol = parseInt(opponentCastleCell.dataset.col);
+        const possibleMoves = getPossibleMoves(2);
 
-    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        // 1. Try to win
+        for (const move of possibleMoves) {
+            if (move.row === opponentCastleRow && move.col === opponentCastleCol) {
+                moveConvoy(null, move.row, move.col);
+                return;
+            }
+        }
 
-    while (queue.length) {
-        const [r,c] = queue.shift();
-        if (r === goalRow && c === goalCol) return true;
+        const convoyCell = player2Convoy.parentElement;
+        const convoyRow = parseInt(convoyCell.dataset.row);
+        const convoyCol = parseInt(convoyCell.dataset.col);
+        const currentDistance = findPathLength({ r: convoyRow, c: convoyCol }, { r: opponentCastleRow, c: opponentCastleCol });
 
-        for (const [dr,dc] of dirs) {
-            const nr = r + dr, nc = c + dc;
-            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-            if (visited[nr][nc]) continue;
-            // treat ANY non-attacked tile as walkable (null, 1, 2 are allowed)
-            if (board[nr][nc] !== -1) {
-                visited[nr][nc] = true;
-                queue.push([nr,nc]);
+        // 2. If no winning move, move convoy closer
+        if (possibleMoves.length > 0) {
+            let bestMove = null;
+            let minDistance = currentDistance;
+
+            for (const move of possibleMoves) {
+                const distance = findPathLength({ r: move.row, c: move.col }, { r: opponentCastleRow, c: opponentCastleCol });
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    bestMove = move;
+                }
+            }
+            if (bestMove) {
+                moveConvoy(null, bestMove.row, bestMove.col);
+                return;
+            }
+        }
+
+        // 3. If no move, build road closer (using Manhattan distance as a heuristic)
+        const possibleBuilds = getPossibleBuilds(2);
+        if (possibleBuilds.length > 0) {
+            let bestBuild = null;
+            let minDistance = Infinity;
+
+            for (const build of possibleBuilds) {
+                const distance = manhattanDistance(build.row, build.col, opponentCastleRow, opponentCastleCol);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    bestBuild = build;
+                }
+            }
+            if (bestBuild) {
+                buildRoad(null, bestBuild.row, bestBuild.col);
+                return;
             }
         }
     }
 
-    return false;
-}
+    function getPossibleMoves(player) {
+        const pawn = player === 1 ? player1Convoy : player2Convoy;
+        if (!pawn) return [];
 
+        const convoyCell = pawn.parentElement;
+        const convoyRow = parseInt(convoyCell.dataset.row);
+        const convoyCol = parseInt(convoyCell.dataset.col);
+        const moves = [];
+        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
+        for (const [dr, dc] of directions) {
+            const newRow = convoyRow + dr;
+            const newCol = convoyCol + dc;
 
+            if (newRow >= 0 && newRow < 10 && newCol >= 0 && newCol < 10 && board[newRow][newCol] !== null && board[newRow][newCol] !== -1) {
+                moves.push({ row: newRow, col: newCol });
+            }
+        }
+        return moves;
+    }
 
+    function getPossibleBuilds(player) {
+        const builds = [];
+        const playerNetwork = [];
+        for(let r=0; r<10; r++) {
+            for(let c=0; c<10; c++) {
+                if(board[r][c] === player) {
+                    playerNetwork.push({r,c});
+                }
+            }
+        }
 
+        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        for (const piece of playerNetwork) {
+            for (const [dr, dc] of directions) {
+                const newRow = piece.r + dr;
+                const newCol = piece.c + dc;
 
+                if (newRow >= 0 && newRow < 10 && newCol >= 0 && newCol < 10 && board[newRow][newCol] === null) {
+                    builds.push({ row: newRow, col: newCol });
+                }
+            }
+        }
+        return builds;
+    }
+
+    function manhattanDistance(r1, c1, r2, c2) {
+        return Math.abs(r1 - r2) + Math.abs(c1 - c2);
+    }
+
+    function findPathLength(startNode, endNode) {
+        const queue = [{ node: startNode, dist: 0 }];
+        const visited = new Set([`${startNode.r},${startNode.c}`]);
+        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+        while (queue.length > 0) {
+            const { node, dist } = queue.shift();
+
+            if (node.r === endNode.r && node.c === endNode.c) {
+                return dist;
+            }
+
+            for (const [dr, dc] of directions) {
+                const newRow = node.r + dr;
+                const newCol = node.c + dc;
+                const key = `${newRow},${newCol}`;
+
+                if (newRow >= 0 && newRow < 10 && newCol >= 0 && newCol < 10 &&
+                    (board[newRow][newCol] !== null && board[newRow][newCol] !== -1) &&
+                    !visited.has(key)) {
+                    
+                    visited.add(key);
+                    queue.push({ node: { r: newRow, c: newCol }, dist: dist + 1 });
+                }
+            }
+        }
+
+        return Infinity; // No path found
+    }
 });
 
+
+// change it so that you cannot attack roads that a player is currently on

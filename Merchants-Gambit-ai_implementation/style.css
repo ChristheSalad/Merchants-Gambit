@@ -1,0 +1,113 @@
+body {
+    background-color: #f5deb3; /* A light brown color */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: sans-serif;
+}
+
+#main-menu, #settings-page, #help-page, #about-page {
+    text-align: center;
+}
+
+button {
+    display: block;
+    margin: 10px auto;
+    padding: 10px 20px;
+    background-color: #8b4513; /* A darker brown color */
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.hidden {
+    display: none;
+}
+
+
+#game-container {
+    display: flex;
+    align-items: center;
+}
+
+#game-info {
+    margin-right: 20px;
+    text-align: center;
+}
+
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(10, 50px);
+    grid-template-rows: repeat(10, 50px);
+    border: 2px solid black;
+}
+
+.grid-cell {
+    width: 50px;
+    height: 50px;
+    border: 1px solid black;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 30px;
+}
+
+.player1-row {
+    background-color: #add8e6; /* Light blue */
+}
+
+.player2-row {
+    background-color: #ffb6c1; /* Light red */
+}
+
+.player1-row.row-highlight {
+    background-color: #87ceeb; /* Sky blue */
+}
+
+.player2-row.row-highlight {
+    background-color: #ff99aa; /* Lighter red */
+}
+
+.player1-castle {
+    text-shadow: 0 0 10px #add8e6, 0 0 20px #add8e6, 0 0 30px #add8e6;
+}
+
+.player2-castle {
+    text-shadow: 0 0 10px #ffb6c1, 0 0 20px #ffb6c1, 0 0 30px #ffb6c1;
+}
+
+.road-preview {
+    background-color: rgba(0, 0, 255, 0.4); /* semi-transparent blue */
+    border: none;
+}
+.attack-preview {
+    background-color: rgba(255, 0, 0, 0.4); /* semi-transparent red */
+    border: none;
+}
+
+.action-btn {
+    padding: 10px 20px;
+    margin: 5px;
+    border: 2px solid #333;
+    background-color: #8b4513;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+/* Hover state */
+.action-btn:hover {
+    background-color: #a0522d;
+    border-color: #666;
+}
+
+/* Selected/active state */
+.action-btn.selected {
+    background-color: #0fd752; /* light blue */
+    border-color: #000000;
+    color: #000;
+}
+
+
