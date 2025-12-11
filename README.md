@@ -31,3 +31,12 @@ Each player will take turns either building a road, traveling down a single road
 
 1. Clone the repository.
 2. Open the `index.html` file in your web browser.
+
+## Additional possible cosmetics
+1. all tiles are grass until built on
+2. grass tiles turn into dirt roads when built
+3. attacked tiles become visible blocked
+4. castle walls surrounding the entire board
+5. background of board should be some themed background of medevial times
+6. change player convoy into some carraige or something
+7. change castle into real castle
