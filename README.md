@@ -47,9 +47,9 @@ The project features a scalable AI difficulty system, implementing three distinc
 
 ## Technical Stack
 
-* **Frontend:** HTML5 for board layout[cite: 110].
+* **Frontend:** HTML5 for board layout.
 * **Styling:** CSS for piece representation and responsive design.
-* **Logic:** Vanilla JavaScript for rules, move verification, graph connectivity checks (BFS), and AI integration[cite: 112].
+* **Logic:** Vanilla JavaScript for rules, move verification, graph connectivity checks (BFS), and AI integration.
 
 ## Installation & Setup
 
@@ -69,5 +69,5 @@ The project features a scalable AI difficulty system, implementing three distinc
 
 ## Complexity Analysis
 
-* **Legal Move Verification:** The connectivity constraint is verified using Breadth-First Search (BFS), ensuring valid graph states efficiently[cite: 97].
-* **Game Complexity:** The combination of road building and destruction creates a branching factor similar to general graph-building games, where determining a forced win is computationally intensive (PSPACE-hard considerations)[cite: 105].
+* **Legal Move Verification:** The connectivity constraint is verified using Breadth-First Search (BFS), ensuring valid graph states efficiently.
+* **Game Complexity:** The combination of road building and destruction creates a branching factor similar to general graph-building games, where determining a forced win is computationally intensive (PSPACE-hard considerations).
