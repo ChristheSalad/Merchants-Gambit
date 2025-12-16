@@ -863,18 +863,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function hardAI() {
-    turnDisplay.textContent = "AI is thinking (Gemini 2.5)...";
+    turnDisplay.textContent = "AI is plotting (Gemini 2.5)...";
 
-    // *** UPDATED API KEY ***
+    // *** YOUR API KEY ***
     const API_KEY = "AIzaSyBDXxaX3eK0XTPyNBxu1XqPMfqlF5eTGIM"; 
     
-    // Cooldown Check for LLM Context
+    // Cooldown Check
     const canAttack = turnNumber - lastAttackTurn[2] >= 5;
-
     const gameStateDescription = generateGameStateDescription(canAttack);
-
-    // *** UPDATED MODEL NAME ***
-    // Switched to 'gemini-2.5-flash' for better logic and speed
     const MODEL_NAME = "gemini-2.5-flash"; 
     const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
@@ -885,25 +881,31 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({
                 contents: [{
                     parts: [{
-                        text: `Play Merchant's Gambit as Player 2. Goal: Reach [${parseInt(player1Castle.dataset.row)}, ${parseInt(player1Castle.dataset.col)}].
+                        text: `ROLE: You are a RUTHLESS, AGGRESSIVE General playing Merchant's Gambit as Player 2. 
+Goal: Reach [${parseInt(player1Castle.dataset.row)}, ${parseInt(player1Castle.dataset.col)}].
+
 RULES:
 - Move on roads (shared).
-- Build road adjacent to any existing road/castle.
+- Build road adjacent to existing road/castle.
 - Attack road (cooldown 5 turns).
-- CURRENT ATTACK STATUS: ${canAttack ? "READY" : "ON COOLDOWN - DO NOT ATTACK"}
+- ATTACK STATUS: ${canAttack ? "READY (PRIORITY)" : "ON COOLDOWN"}
 
 STATE:
 ${gameStateDescription}
 
-INSTRUCTIONS:
-1. WIN if possible (Move to goal).
-2. MOVE closer if possible.
-3. BUILD towards goal if blocked.
-4. ATTACK only if critical and ALLOWED.
+TACTICAL PRIORITIES:
+1. WIN GAME: If goal is reachable, MOVE there immediately.
+2. DESTROY ENEMY: If you can attack an enemy road/unit and status is READY, you MUST ATTACK. Do not hesitate.
+3. ADVANCE: Move closer to goal.
+4. BUILD: Build only if blocked.
 
 Return JSON: {"action": "MOVE"|"BUILD"|"ATTACK", "row": number, "col": number}`
                     }]
-                }]
+                }],
+                // Added slightly higher temperature for more "creative/risky" plays
+                generationConfig: {
+                    temperature: 0.9 
+                }
             })
         });
 
@@ -917,9 +919,9 @@ Return JSON: {"action": "MOVE"|"BUILD"|"ATTACK", "row": number, "col": number}`
         const cleanedText = textContent.replace(/```json|```/g, '').trim();
         const decision = JSON.parse(cleanedText);
 
-        console.log('Gemini 2.5 Decision:', decision);
+        console.log('Gemini 2.5 (Aggressive) Decision:', decision);
 
-        // ** SAFETY CHECK: Prevent LLM Hallucinated Attacks during Cooldown **
+        // ** SAFETY CHECK **
         if (decision.action === 'ATTACK' && !canAttack) {
             console.warn("AI tried to attack on cooldown. Forcing fallback.");
             await mediumAI(); 
@@ -937,7 +939,7 @@ Return JSON: {"action": "MOVE"|"BUILD"|"ATTACK", "row": number, "col": number}`
             await mediumAI();
         }
     } catch (error) {
-        console.error('Gemini AI failed (Check Console for details), using Medium AI:', error);
+        console.error('Gemini AI failed, using Medium AI:', error);
         await mediumAI();
     }
 }
@@ -1023,6 +1025,12 @@ Return JSON: {"action": "MOVE"|"BUILD"|"ATTACK", "row": number, "col": number}`
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
                 if (state.board[r][c] === 'road') {
+                    // Prevent attacking a tile with a convoy on it
+                    if ((r === state.p1ConvoyPos.row && c === state.p1ConvoyPos.col) ||
+                        (r === state.p2ConvoyPos.row && c === state.p2ConvoyPos.col)) {
+                        continue;
+                    }
+
                     const original = state.board[r][c];
                     state.board[r][c] = -1; 
                     const connected = checkGlobalConnectivity(state.board, p1C.row, p1C.col, p2C.row, p2C.col);
