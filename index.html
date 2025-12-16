@@ -9,10 +9,19 @@
 <body>
     <div id="main-menu">
         <h1>Merchant's Gambit</h1>
-        <button id="start-game" class="action-btn">Start Game</button>
+        <button id="player-vs-player" class="action-btn">Player vs Player</button>
+        <button id="player-vs-ai" class="action-btn">Player vs AI</button>
         <button id="settings" class="action-btn">Settings</button>
         <button id="help" class="action-btn">Help</button>
         <button id="about" class="action-btn">About</button>
+    </div>
+
+    <div id="ai-difficulty-menu" class="hidden">
+        <h1>Select AI Difficulty</h1>
+        <button id="easy-difficulty" class="action-btn">Easy (Heuristic)</button>
+        <button id="medium-difficulty" class="action-btn">Medium (MCTS)</button>
+        <button id="hard-difficulty" class="action-btn">Hard (LLM)</button>
+        <button class="back-to-menu">Back</button>
     </div>
 
     <div id="game-container" class="hidden">
@@ -60,8 +69,10 @@
     <div id="about-page" class="hidden">
         <h2>About</h2>
         <p>Merchant's Gambit is a 2-player turn-based strategy game.</p>
+        <p>Created for Game Theory and Complexity final project.</p>
         <button class="back-to-menu">Back</button>
     </div>
 
     <script src="script.js"></script>
 </body>
+</html>

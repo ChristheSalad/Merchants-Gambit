@@ -8,7 +8,7 @@ body {
     font-family: sans-serif;
 }
 
-#main-menu, #settings-page, #help-page, #about-page {
+#main-menu, #settings-page, #help-page, #about-page, #ai-difficulty-menu {
     text-align: center;
 }
 
@@ -25,7 +25,6 @@ button {
 .hidden {
     display: none;
 }
-
 
 #game-container {
     display: flex;
@@ -83,6 +82,7 @@ button {
     background-color: rgba(0, 0, 255, 0.4); /* semi-transparent blue */
     border: none;
 }
+
 .attack-preview {
     background-color: rgba(255, 0, 0, 0.4); /* semi-transparent red */
     border: none;
@@ -105,7 +105,14 @@ button {
 
 /* Selected/active state */
 .action-btn.selected {
-    background-color: #0fd752; /* light blue */
+    background-color: #0fd752; /* light green */
     border-color: #000000;
     color: #000;
+}
+
+/* Disabled state for AI turns */
+.action-btn:disabled {
+    background-color: #666;
+    cursor: not-allowed;
+    opacity: 0.5;
 }
