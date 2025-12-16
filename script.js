@@ -863,27 +863,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function hardAI() {
-        turnDisplay.textContent = "AI is thinking (Gemini)...";
+    turnDisplay.textContent = "AI is thinking (Gemini 2.5)...";
 
-        // *** IMPORTANT: INSERT YOUR KEY BELOW ***
-        const API_KEY = "INSERT_YOUR_GEMINI_API_KEY_HERE"; 
-        
-        // Cooldown Check for LLM Context
-        const canAttack = turnNumber - lastAttackTurn[2] >= 5;
+    // *** UPDATED API KEY ***
+    const API_KEY = "AIzaSyBDXxaX3eK0XTPyNBxu1XqPMfqlF5eTGIM"; 
+    
+    // Cooldown Check for LLM Context
+    const canAttack = turnNumber - lastAttackTurn[2] >= 5;
 
-        const gameStateDescription = generateGameStateDescription(canAttack);
+    const gameStateDescription = generateGameStateDescription(canAttack);
 
-        const MODEL_NAME = "gemini-1.5-flash-latest"; 
-        const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+    // *** UPDATED MODEL NAME ***
+    // Switched to 'gemini-2.5-flash' for better logic and speed
+    const MODEL_NAME = "gemini-2.5-flash"; 
+    const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
-        try {
-            const response = await fetch(URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: `Play Merchant's Gambit as Player 2. Goal: Reach [${parseInt(player1Castle.dataset.row)}, ${parseInt(player1Castle.dataset.col)}].
+    try {
+        const response = await fetch(URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: `Play Merchant's Gambit as Player 2. Goal: Reach [${parseInt(player1Castle.dataset.row)}, ${parseInt(player1Castle.dataset.col)}].
 RULES:
 - Move on roads (shared).
 - Build road adjacent to any existing road/castle.
@@ -900,41 +902,45 @@ INSTRUCTIONS:
 4. ATTACK only if critical and ALLOWED.
 
 Return JSON: {"action": "MOVE"|"BUILD"|"ATTACK", "row": number, "col": number}`
-                        }]
                     }]
-                })
-            });
+                }]
+            })
+        });
 
-            if (!response.ok) throw new Error(`API Error: ${response.status}`);
-            const data = await response.json();
-            const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            const cleanedText = textContent.replace(/```json|```/g, '').trim();
-            const decision = JSON.parse(cleanedText);
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`API Error ${response.status}: ${errText}`);
+        }
 
-            console.log('Gemini Decision:', decision);
+        const data = await response.json();
+        const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const cleanedText = textContent.replace(/```json|```/g, '').trim();
+        const decision = JSON.parse(cleanedText);
 
-            // ** SAFETY CHECK: Prevent LLM Hallucinated Attacks during Cooldown **
-            if (decision.action === 'ATTACK' && !canAttack) {
-                console.warn("AI tried to attack on cooldown. Forcing fallback.");
-                await mediumAI(); 
-                return;
-            }
+        console.log('Gemini 2.5 Decision:', decision);
 
-            if (decision.action === 'MOVE') {
-                moveConvoy(null, decision.row, decision.col);
-            } else if (decision.action === 'BUILD') {
-                buildRoad(null, decision.row, decision.col);
-            } else if (decision.action === 'ATTACK') {
-                const cell = document.querySelector(`.grid-cell[data-row="${decision.row}"][data-col="${decision.col}"]`);
-                attackRoad(cell, decision.row, decision.col);
-            } else {
-                await mediumAI();
-            }
-        } catch (error) {
-            console.error('Gemini AI failed, using Medium AI:', error);
+        // ** SAFETY CHECK: Prevent LLM Hallucinated Attacks during Cooldown **
+        if (decision.action === 'ATTACK' && !canAttack) {
+            console.warn("AI tried to attack on cooldown. Forcing fallback.");
+            await mediumAI(); 
+            return;
+        }
+
+        if (decision.action === 'MOVE') {
+            moveConvoy(null, decision.row, decision.col);
+        } else if (decision.action === 'BUILD') {
+            buildRoad(null, decision.row, decision.col);
+        } else if (decision.action === 'ATTACK') {
+            const cell = document.querySelector(`.grid-cell[data-row="${decision.row}"][data-col="${decision.col}"]`);
+            attackRoad(cell, decision.row, decision.col);
+        } else {
             await mediumAI();
         }
+    } catch (error) {
+        console.error('Gemini AI failed (Check Console for details), using Medium AI:', error);
+        await mediumAI();
     }
+}
 
     // --- State Generation for AI ---
 

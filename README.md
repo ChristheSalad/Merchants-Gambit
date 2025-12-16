@@ -1,36 +1,36 @@
 # Merchants Gambit
 
-**Authors:** Christian Saldana, Jorge Vasquez, Jaden Arredondo [cite: 2, 8]  
-**University:** University of Texas Rio Grande Valley [cite: 2]  
-**Course:** Game Theory and Complexity - Final Project [cite: 4]
+**Authors:** Christian Saldana, Jorge Vasquez, Jaden Arredondo 
+**University:** University of Texas Rio Grande Valley
+**Course:** Game Theory and Complexity - Final Project
 
 ## Abstract
 
-Merchants Gambit is an adversarial strategy game played on a grid, combining path-building and sabotage mechanics with a strict global connectivity constraint[cite: 5, 15]. Players must navigate a "Trojan Horse" style convoy to the opposing player's castle to win[cite: 14]. This software implementation demonstrates the application of various AI techniques—ranging from heuristics to Large Language Models (LLMs)—to solve dynamic pathfinding and blocking problems.
+Merchants Gambit is an adversarial strategy game played on a grid, combining path-building and sabotage mechanics with a strict global connectivity constraint. Players must navigate a "Trojan Horse" style convoy to the opposing player's castle to win. This software implementation demonstrates the application of various AI techniques—ranging from heuristics to Large Language Models (LLMs)—to solve dynamic pathfinding and blocking problems.
 
 ## Game Description
 
 ### Concept Overview
-Merchants Gambit is a two-player race game[cite: 14]. Each player represents a merchant attempting to secretly deliver a convoy to the opponent’s castle. Players construct roads, traverse them, and selectively attack enemy road segments[cite: 15]. The game is constrained by a global connectivity rule ensuring that a path between the two castles always remains possible[cite: 15].
+Merchants Gambit is a two-player race game. Each player represents a merchant attempting to secretly deliver a convoy to the opponent’s castle. Players construct roads, traverse them, and selectively attack enemy road segments. The game is constrained by a global connectivity rule ensuring that a path between the two castles always remains possible.
 
 ### Rules & Mechanics (Current Implementation)
 
-* **Board:** The game is played on a **10x10 grid** (updated from original 8x8 design)[cite: 5].
-* **Objective:** The first player to move their Convoy onto the opponent's Castle wins[cite: 59].
+* **Board:** The game is played on a **10x10 grid** (updated from original 8x8 design).
+* **Objective:** The first player to move their Convoy onto the opponent's Castle wins.
 * **Shared Infrastructure:** Unlike standard connection games, built roads are shared; players may traverse roads built by their opponent.
-* **Actions:** On their turn, a player must choose exactly one action[cite: 44]:
-    1.  **Build Road:** Place a road on an empty tile adjacent to the player's Convoy or any existing road[cite: 45].
-    2.  **Move Convoy:** Move the convoy to an adjacent tile containing a road or castle[cite: 46].
-    3.  **Attack:** Destroy an existing road tile[cite: 47].
+* **Actions:** On their turn, a player must choose exactly one action:
+    1.  **Build Road:** Place a road on an empty tile adjacent to the player's Convoy or any existing road.
+    2.  **Move Convoy:** Move the convoy to an adjacent tile containing a road or castle.
+    3.  **Attack:** Destroy an existing road tile.
 
 ### Constraints & Cooldowns
-* **Connectivity Rule:** An attack is illegal if removing the road would disconnect the two castles, making victory impossible for either side[cite: 20, 54].
-* **Attack Cooldown:** To prevent degenerate states, players must wait **5 turns** after attacking before they can attack again (updated from original 3-turn design)[cite: 21].
+* **Connectivity Rule:** An attack is illegal if removing the road would disconnect the two castles, making victory impossible for either side.
+* **Attack Cooldown:** To prevent degenerate states, players must wait **5 turns** after attacking before they can attack again (updated from original 3-turn design).
 * **Safety:** Castles and tiles currently occupied by a convoy cannot be attacked.
 
 ## AI Implementation
 
-The project features a scalable AI difficulty system[cite: 121], implementing three distinct algorithms:
+The project features a scalable AI difficulty system, implementing three distinct algorithms:
 
 ### 1. Easy Mode: "The Selfish Builder" (Heuristic)
 * **Logic:** Uses a simple Manhattan Distance heuristic to move towards the goal.
@@ -41,14 +41,14 @@ The project features a scalable AI difficulty system[cite: 121], implementing th
 * **Strategy:** Simulates hundreds of future game states per turn. Unlike random MCTS, the simulation phase is biased to prioritize moves that reduce distance to the goal, allowing the AI to "plan" paths and blocks effectively without an LLM.
 
 ### 3. Hard Mode: "The Strategist" (Gemini LLM)
-* **Logic:** Integration with Google's **Gemini 1.5 Flash** model.
+* **Logic:** Integration with Google's **Gemini 2.5 Flash** model.
 * **Strategy:** The board state is serialized into text and analyzed by the LLM to determine high-level strategy (e.g., identifying when to block an opponent vs. when to rush the goal).
 * **Fallback:** Includes a safety mechanism that reverts to MCTS logic if the API fails or attempts an illegal move (e.g., attacking during cooldown).
 
 ## Technical Stack
 
 * **Frontend:** HTML5 for board layout[cite: 110].
-* **Styling:** CSS for piece representation and responsive design[cite: 111].
+* **Styling:** CSS for piece representation and responsive design.
 * **Logic:** Vanilla JavaScript for rules, move verification, graph connectivity checks (BFS), and AI integration[cite: 112].
 
 ## Installation & Setup
