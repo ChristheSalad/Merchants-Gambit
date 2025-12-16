@@ -544,6 +544,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return Infinity;
     }
 
+    function findPathLengthForState(boardState, startNode, endNode) {
+        if (!startNode || !endNode) return Infinity;
+        const queue = [{ r: startNode.r, c: startNode.c, dist: 0 }];
+        const visited = new Set([`${startNode.r},${startNode.c}`]);
+        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+        while (queue.length > 0) {
+            const { r, c, dist } = queue.shift();
+            if (r === endNode.r && c === endNode.c) return dist;
+
+            for (const [dr, dc] of directions) {
+                const newRow = r + dr;
+                const newCol = c + dc;
+                const key = `${newRow},${newCol}`;
+
+                if (newRow >= 0 && newRow < 10 && newCol >= 0 && newCol < 10 &&
+                    (boardState[newRow][newCol] === 'road' || boardState[newRow][newCol] === 'castle') &&
+                    !visited.has(key)) {
+                    visited.add(key);
+                    queue.push({ r: newRow, c: newCol, dist: dist + 1 });
+                }
+            }
+        }
+        return Infinity;
+    }
+
     function manhattanDistance(r1, c1, r2, c2) {
         return Math.abs(r1 - r2) + Math.abs(c1 - c2);
     }
@@ -632,56 +658,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function mediumAI() {
-        // IMPROVED MCTS: "Smart Simulation"
-        // Instead of random rollouts, the simulation phase is now greedy.
-        // It always picks a move that reduces distance if available.
-        // This mimics the 'planning' of Hard mode without needing an LLM.
-
-        const simulations = 400;
-        const explorationConstant = 1.414;
+        // MCTS with Random Rollout Simulation
+        const explorationConstant = 2.0; 
 
         class MCTSNode {
             constructor(gameState, parent = null, move = null) {
                 this.gameState = gameState;
                 this.parent = parent;
-                this.move = move;
+                this.move = move; // The move that led to this state
                 this.children = [];
                 this.visits = 0;
-                this.wins = 0;
+                this.wins = 0; // Score from the perspective of the player whose turn it is
                 this.untriedMoves = this.getPossibleMoves();
             }
 
             getPossibleMoves() {
                 const moves = [];
                 const player = this.gameState.currentPlayer;
-                
-                const possibleMoves = getPossibleMovesForState(this.gameState, player);
-                moves.push(...possibleMoves.map(m => ({ type: 'move', ...m })));
-                
-                // Optimized Builds: Near Convoy OR Near Goal
-                const possibleBuilds = getPossibleBuildsForState(this.gameState, player);
-                const relevantBuilds = possibleBuilds.filter(b => {
-                    const myPos = player===1?this.gameState.p1ConvoyPos:this.gameState.p2ConvoyPos;
-                    const goalPos = player===1?this.gameState.p2CastlePos:this.gameState.p1CastlePos;
-                    
-                    const distToConvoy = Math.abs(b.row - myPos.row) + Math.abs(b.col - myPos.col);
-                    const distToGoal = Math.abs(b.row - goalPos.row) + Math.abs(b.col - goalPos.col);
-                    
-                    return distToConvoy <= 2 || distToGoal <= 3; 
-                });
-                moves.push(...relevantBuilds.map(m => ({ type: 'build', ...m })));
-                
-                // CRITICAL FIX: Only add attacks if cooldown allows
+                moves.push(...getPossibleMovesForState(this.gameState, player).map(m => ({ type: 'move', ...m })));
+                moves.push(...getPossibleBuildsForState(this.gameState, player).map(m => ({ type: 'build', ...m })));
                 if (this.gameState.turnNumber - this.gameState.lastAttackTurn[player] >= 5) {
-                    const possibleAttacks = getPossibleAttacksForState(this.gameState, player);
-                    // Filter attacks: Only attacking near opponent is useful
-                    const smartAttacks = possibleAttacks.filter(a => {
-                        const enemyPos = player===1?this.gameState.p2ConvoyPos:this.gameState.p1ConvoyPos;
-                        return Math.abs(a.row - enemyPos.row) + Math.abs(a.col - enemyPos.col) <= 3;
-                    });
-                    moves.push(...smartAttacks.map(m => ({ type: 'attack', ...m })));
+                    moves.push(...getPossibleAttacksForState(this.gameState, player).map(m => ({ type: 'attack', ...m })));
                 }
-                
                 return moves;
             }
 
@@ -689,165 +687,155 @@ document.addEventListener('DOMContentLoaded', () => {
             isTerminal() { return this.gameState.winner !== null; }
 
             bestChild(c = explorationConstant) {
-                return this.children.reduce((best, child) => {
-                    let uctValue = (child.wins / child.visits) + 
-                                    c * Math.sqrt(Math.log(this.visits) / child.visits);
-                    // Bias for moving
-                    if (child.move.type === 'move') uctValue += 0.5;
-                    return uctValue > ((best.wins / best.visits) + c * Math.sqrt(Math.log(this.visits) / best.visits)) ? child : best;
-                }, this.children[0]);
+                let bestUct = -Infinity;
+                let bestChildren = [];
+
+                for (const child of this.children) {
+                    if (child.visits === 0) return child;
+                    
+                    // UCT calculation
+                    const exploitation = child.wins / child.visits;
+                    const exploration = Math.sqrt(Math.log(this.visits) / child.visits);
+                    let uctValue = exploitation + c * exploration;
+
+                    if (child.move.type === 'move') {
+                        uctValue += 0.1; // Small bias for moving
+                    }
+
+                    if (uctValue > bestUct) {
+                        bestUct = uctValue;
+                        bestChildren = [child];
+                    } else if (Math.abs(uctValue - bestUct) < 1e-6) {
+                        bestChildren.push(child);
+                    }
+                }
+                if(bestChildren.length === 0) return null;
+                return bestChildren[Math.floor(Math.random() * bestChildren.length)];
             }
         }
 
-        // --- MCTS State Helpers ---
         function cloneGameState() {
             return {
                 board: board.map(row => [...row]),
-                currentPlayer: 2,
+                roadOwner: roadOwner.map(row => [...row]),
+                currentPlayer: 2, // AI is always player 2
                 turnNumber: turnNumber,
                 lastAttackTurn: { ...lastAttackTurn },
-                p1ConvoyPos: { row: parseInt(player1Convoy.parentElement.dataset.row), col: parseInt(player1Convoy.parentElement.dataset.col) },
-                p2ConvoyPos: { row: parseInt(player2Convoy.parentElement.dataset.row), col: parseInt(player2Convoy.parentElement.dataset.col) },
-                p1CastlePos: { row: parseInt(player1Castle.dataset.row), col: parseInt(player1Castle.dataset.col) },
-                p2CastlePos: { row: parseInt(player2Castle.dataset.row), col: parseInt(player2Castle.dataset.col) },
+                p1ConvoyPos: { r: parseInt(player1Convoy.parentElement.dataset.row), c: parseInt(player1Convoy.parentElement.dataset.col) },
+                p2ConvoyPos: { r: parseInt(player2Convoy.parentElement.dataset.row), c: parseInt(player2Convoy.parentElement.dataset.col) },
+                p1CastlePos: { r: parseInt(player1Castle.dataset.row), c: parseInt(player1Castle.dataset.col) },
+                p2CastlePos: { r: parseInt(player2Castle.dataset.row), c: parseInt(player2Castle.dataset.col) },
                 winner: null
             };
         }
 
         function applyMove(state, move) {
             const newState = JSON.parse(JSON.stringify(state));
-            newState.currentPlayer = state.currentPlayer === 1 ? 2 : 1;
-            newState.turnNumber = state.turnNumber + 1;
-            
-            const convoyPos = state.currentPlayer === 1 ? newState.p1ConvoyPos : newState.p2ConvoyPos;
-            const targetPos = state.currentPlayer === 1 ? newState.p2CastlePos : newState.p1CastlePos;
+            const player = newState.currentPlayer;
 
             if (move.type === 'move') {
-                convoyPos.row = move.row;
-                convoyPos.col = move.col;
-                if (move.row === targetPos.row && move.col === targetPos.col) {
-                    newState.winner = state.currentPlayer;
+                const convoyPos = player === 1 ? newState.p1ConvoyPos : newState.p2ConvoyPos;
+                convoyPos.r = move.row;
+                convoyPos.c = move.col;
+                const target = player === 1 ? newState.p2CastlePos : newState.p1CastlePos;
+                if (convoyPos.r === target.r && convoyPos.c === target.c) {
+                    newState.winner = player;
                 }
             } else if (move.type === 'build') {
                 newState.board[move.row][move.col] = 'road';
+                newState.roadOwner[move.row][move.col] = player;
             } else if (move.type === 'attack') {
-                newState.board[move.row][move.col] = -1;
-                newState.lastAttackTurn[state.currentPlayer] = newState.turnNumber;
+                newState.board[move.row][move.col] = null;
+                newState.roadOwner[move.row][move.col] = null;
+                newState.lastAttackTurn[player] = newState.turnNumber;
             }
+            newState.currentPlayer = player === 1 ? 2 : 1;
+            newState.turnNumber++;
             return newState;
         }
 
         function simulate(state) {
             let simState = JSON.parse(JSON.stringify(state));
             let depth = 0;
-            const maxDepth = 20;
+            const maxDepth = 30;
 
             while (simState.winner === null && depth < maxDepth) {
                 const player = simState.currentPlayer;
-                const target = player === 1 ? simState.p2CastlePos : simState.p1CastlePos;
-                const currentPos = player === 1 ? simState.p1ConvoyPos : simState.p2ConvoyPos;
-                const currentDist = Math.abs(currentPos.row - target.row) + Math.abs(currentPos.col - target.col);
-
-                // SMART SIMULATION POLICY:
-                // 1. Can I move closer? DO IT.
-                const moves = getPossibleMovesForState(simState, player);
-                let bestMove = null;
-                for(const m of moves) {
-                    const d = Math.abs(m.row - target.row) + Math.abs(m.col - target.col);
-                    if(d < currentDist) {
-                        bestMove = { type: 'move', ...m };
-                        break;
-                    }
+                const moves = [];
+                moves.push(...getPossibleMovesForState(simState, player).map(m => ({ type: 'move', ...m })));
+                moves.push(...getPossibleBuildsForState(simState, player).map(m => ({ type: 'build', ...m })));
+                if (simState.turnNumber - simState.lastAttackTurn[player] >= 5) {
+                    moves.push(...getPossibleAttacksForState(simState, player).map(m => ({ type: 'attack', ...m })));
                 }
 
-                if(bestMove) {
-                    simState = applyMove(simState, bestMove);
-                } else {
-                    // 2. Can I build closer? (Greedy build)
-                    const builds = getPossibleBuildsForState(simState, player);
-                    let bestBuild = null;
-                    let minBuildDist = Infinity;
-                    
-                    // Try to pick a build that is close to my convoy AND towards goal
-                    // Just picking 5 random builds is too chaotic for "smart" simulation
-                    // Let's filter builds that are strictly adjacent to convoy
-                    const adjacentBuilds = builds.filter(b => 
-                        (Math.abs(b.row - currentPos.row) + Math.abs(b.col - currentPos.col)) <= 2
-                    );
-                    
-                    if(adjacentBuilds.length > 0) {
-                         // Pick one that minimizes distance to goal
-                         for(const b of adjacentBuilds) {
-                             const d = Math.abs(b.row - target.row) + Math.abs(b.col - target.col);
-                             if(d < minBuildDist) {
-                                 minBuildDist = d;
-                                 bestBuild = { type: 'build', ...b };
-                             }
-                         }
-                    }
+                if (moves.length === 0) break;
 
-                    if(bestBuild) {
-                         simState = applyMove(simState, bestBuild);
-                    } else {
-                        // 3. Random fallback (rarely reached if blocked)
-                        // If we are here, we might be stuck or need to attack (but we ignore attack in fast simulation usually)
-                        break; 
-                    }
-                }
+                const randomMove = moves[Math.floor(Math.random() * moves.length)];
+                simState = applyMove(simState, randomMove);
                 depth++;
             }
 
-            // Scoring
-            if (simState.winner !== null) return simState.winner;
+            if (simState.winner) return simState.winner;
 
-            const p2Dist = Math.abs(simState.p2ConvoyPos.row - simState.p1CastlePos.row) + 
-                           Math.abs(simState.p2ConvoyPos.col - simState.p1CastlePos.col);
-            const p1Dist = Math.abs(simState.p1ConvoyPos.row - simState.p2CastlePos.row) + 
-                           Math.abs(simState.p1ConvoyPos.col - simState.p2CastlePos.col);
+            // If no winner, score based on path length
+            const p1Dist = findPathLengthForState(simState.board, simState.p1ConvoyPos, simState.p2CastlePos);
+            const p2Dist = findPathLengthForState(simState.board, simState.p2ConvoyPos, simState.p1CastlePos);
 
-            return p2Dist < p1Dist ? 2 : 1;
+            if (p2Dist < p1Dist) return 2;
+            if (p1Dist < p2Dist) return 1;
+            return 0; // Draw
         }
-
+        
         const rootState = cloneGameState();
         const root = new MCTSNode(rootState);
 
         const startTime = Date.now();
         while (Date.now() - startTime < 1000) { // 1 second think time
             let node = root;
+
+            // Selection
             while (!node.isTerminal() && node.isFullyExpanded()) {
                 node = node.bestChild();
+                if (!node) { node = root; break; } // Fallback
             }
-            if (!node.isTerminal() && node.untriedMoves.length > 0) {
-                // Heuristic sort untried moves to try "moves" before "builds"
-                node.untriedMoves.sort((a,b) => {
-                    if(a.type === 'move' && b.type !== 'move') return 1; // pop moves last (array pop is from end) -> actually we want moves first? 
-                    // array.pop takes from end. So put priority items at END.
-                    if(a.type === 'move' && b.type !== 'move') return 1;
-                    if(a.type !== 'move' && b.type === 'move') return -1;
-                    return 0;
-                });
-                
+
+            // Expansion
+            if (!node.isTerminal() && !node.isFullyExpanded()) {
                 const move = node.untriedMoves.pop();
                 const newState = applyMove(node.gameState, move);
                 const child = new MCTSNode(newState, node, move);
                 node.children.push(child);
                 node = child;
             }
+
+            // Simulation
             const winner = simulate(node.gameState);
-            while (node !== null) {
-                node.visits++;
-                if (winner === 2) node.wins++;
-                node = node.parent;
+
+            // Backpropagation
+            let tempNode = node;
+            while (tempNode !== null) {
+                tempNode.visits++;
+                // The winner score is from the perspective of the parent node's player
+                if (tempNode.parent) {
+                    if (winner !== 0) { // Not a draw
+                         if (tempNode.parent.gameState.currentPlayer === winner) {
+                            tempNode.wins++;
+                        }
+                    } else {
+                        tempNode.wins += 0.5; // Award half point for a draw
+                    }
+                }
+                tempNode = tempNode.parent;
             }
         }
 
         if (root.children.length > 0) {
-            const bestChild = root.children.reduce((best, child) => 
-                child.visits > best.visits ? child : best
-            );
-            
+            const bestChild = root.children.reduce((best, child) => {
+                return (child.visits > best.visits) ? child : best;
+            });
+
             const move = bestChild.move;
-            console.log('MCTS chose:', move);
+            console.log('MCTS (Random Rollout) chose:', move, `(visits: ${bestChild.visits}, score: ${bestChild.wins/bestChild.visits})`);
             
             if (move.type === 'move') {
                 moveConvoy(null, move.row, move.col);
@@ -975,8 +963,8 @@ Return JSON: {"action": "MOVE"|"BUILD"|"ATTACK", "row": number, "col": number}`
         const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
         for (const [dr, dc] of directions) {
-            const newRow = convoyPos.row + dr;
-            const newCol = convoyPos.col + dc;
+            const newRow = convoyPos.r + dr;
+            const newCol = convoyPos.c + dc;
 
             if (newRow >= 0 && newRow < 10 && newCol >= 0 && newCol < 10) {
                 if (state.board[newRow][newCol] === 'road' || state.board[newRow][newCol] === 'castle') {
@@ -992,7 +980,7 @@ Return JSON: {"action": "MOVE"|"BUILD"|"ATTACK", "row": number, "col": number}`
         const buildableFrom = [];
         for(let r=0; r<10; r++) {
             for(let c=0; c<10; c++) {
-                if(state.board[r][c] === 'road' || state.board[r][c] === 'castle') {
+                if(state.roadOwner[r][c] === player || state.board[r][c] === 'castle') {
                     buildableFrom.push({row: r, col: c});
                 }
             }
@@ -1024,16 +1012,16 @@ Return JSON: {"action": "MOVE"|"BUILD"|"ATTACK", "row": number, "col": number}`
 
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
-                if (state.board[r][c] === 'road') {
-                    // Prevent attacking a tile with a convoy on it
-                    if ((r === state.p1ConvoyPos.row && c === state.p1ConvoyPos.col) ||
-                        (r === state.p2ConvoyPos.row && c === state.p2ConvoyPos.col)) {
+                if (state.board[r][c] === 'road' && state.roadOwner[r][c] !== player) {
+                    
+                    if ((r === state.p1ConvoyPos.r && c === state.p1ConvoyPos.c) ||
+                        (r === state.p2ConvoyPos.r && c === state.p2ConvoyPos.c)) {
                         continue;
                     }
 
                     const original = state.board[r][c];
-                    state.board[r][c] = -1; 
-                    const connected = checkGlobalConnectivity(state.board, p1C.row, p1C.col, p2C.row, p2C.col);
+                    state.board[r][c] = null; 
+                    const connected = checkGlobalConnectivity(state.board, p1C.r, p1C.c, p2C.r, p2C.c);
                     state.board[r][c] = original; 
 
                     if (connected) {
@@ -1047,13 +1035,13 @@ Return JSON: {"action": "MOVE"|"BUILD"|"ATTACK", "row": number, "col": number}`
 
     function getPossibleMoves(player) {
         return getPossibleMovesForState({
-            p1ConvoyPos: { row: parseInt(player1Convoy.parentElement.dataset.row), col: parseInt(player1Convoy.parentElement.dataset.col) },
-            p2ConvoyPos: { row: parseInt(player2Convoy.parentElement.dataset.row), col: parseInt(player2Convoy.parentElement.dataset.col) },
+            p1ConvoyPos: { r: parseInt(player1Convoy.parentElement.dataset.row), c: parseInt(player1Convoy.parentElement.dataset.col) },
+            p2ConvoyPos: { r: parseInt(player2Convoy.parentElement.dataset.row), c: parseInt(player2Convoy.parentElement.dataset.col) },
             board: board
         }, player);
     }
 
     function getPossibleBuilds(player) {
-        return getPossibleBuildsForState({ board: board }, player);
+        return getPossibleBuildsForState({ roadOwner: roadOwner, board: board }, player);
     }
 });
